@@ -1,0 +1,10 @@
+import SkillAssessment from "@/components/SkillAssessment";
+
+export default function SkillsPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">技能自评</h1>
+      <SkillAssessment />
+    </div>
+  );
+}

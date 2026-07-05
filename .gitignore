@@ -35,3 +35,5 @@ prisma/migrations/
 
 # os
 Thumbs.db
+tsconfig.tsbuildinfo
+.env
