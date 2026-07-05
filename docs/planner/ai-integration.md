@@ -4,10 +4,11 @@
 
 ```text
 src/lib/ai/client.ts
-  ├── import { createAgent } from '@archships/dim-agent-sdk'
-  ├── import { deepseek } from '@archships/dim-agent-sdk/providers/deepseek'
+  ├── import { createAgent, createModel, createDeepSeekAdapter } from '@archships/dim-agent-sdk'
   ├── 读取 process.env.DEEPSEEK_API_KEY
-  └── 导出 agent 实例
+  ├── createDeepSeekAdapter({ apiKey, baseUrl, defaultModel })
+  ├── createModel(adapter) → ModelClient
+  └── 导出 getModel() / chatOnce() / chatStream() / chatMultiTurn()
 ```
 
 环境变量：
@@ -18,15 +19,81 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com   # 可选，默认即此
 DEEPSEEK_MODEL=deepseek-chat                  # 可选
 ```
 
+## 两种 AI 交互模式
+
+### 模式一：一次性流式
+
+用于画像总结、差距分析、学习计划、周报分析、规划报告。
+
+```text
+用户点击 AI 按钮
+  ↓
+POST /api/ai/{endpoint}
+  ↓
+API 读取数据库 → 组装 prompt
+  ↓
+chatStream(systemPrompt, userPrompt, onDelta)
+  ↓
+SSE: data: {"type":"delta","delta":"...","accumulated":"..."}
+  ↓
+前端 useAIStream hook 实时读取并展示
+  ↓
+SSE: data: {"type":"done","full":"..."}
+  ↓
+保存到 ai_summaries 表
+```
+
+实现文件：
+
+- `src/lib/ai/client.ts` — `chatStream()` 流式回调
+- `src/lib/ai/stream.ts` — `runStreamingAI()` SSE 封装
+- `src/lib/hooks/useAIStream.ts` — 前端 SSE 读取 hook
+- `src/components/AIStreamPanel.tsx` — 通用流式展示组件
+
+### 模式二：多轮对话
+
+用于 FDE 顾问自由问答。
+
+```text
+用户发送消息
+  ↓
+POST /api/chat { sessionId?, message }
+  ↓
+API 获取/创建 chat_session
+  ↓
+保存 user message 到 chat_messages
+  ↓
+加载历史消息 → 组装多轮 messages 数组
+  ↓
+chatMultiTurn(messages, onDelta)
+  ↓
+SSE: data: {"type":"delta","delta":"...","accumulated":"..."}
+  ↓
+SSE: data: {"type":"done","full":"...","sessionId":123}
+  ↓
+保存 assistant message 到 chat_messages
+```
+
+实现文件：
+
+- `src/lib/ai/client.ts` — `chatMultiTurn()` 多轮对话 + 流式
+- `src/app/api/chat/route.ts` — POST 发送消息（SSE 流式）、GET 会话列表
+- `src/app/api/chat/[id]/route.ts` — GET 会话详情、DELETE 删除会话
+- `src/components/ChatInterface.tsx` — 完整对话界面
+
 ## API 路由
 
-| 路由 | 方法 | 输入 | 输出 | 用途 |
-|---|---|---|---|---|
-| `/api/ai/summarize-profile` | POST | profile 数据 | 结构化总结文本 | 生成个人画像总结 |
-| `/api/ai/analyze-gap` | POST | profile + 最新 skill_assessments | 优势/短板/优先补齐 | 差距分析 |
-| `/api/ai/generate-plan` | POST | profile + assessments | 30/60/90 任务列表 | 生成学习计划 |
-| `/api/ai/review-weekly` | POST | weekly_log + 历史 | 周报分析与建议 | 分析周报 |
-| `/api/ai/generate-report` | POST | 全量数据 | 完整规划报告 Markdown | 导出报告 |
+| 路由 | 方法 | 模式 | 用途 |
+|---|---|---|---|
+| `/api/ai/summarize-profile` | POST | 一次性流式 | 生成个人画像总结 |
+| `/api/ai/analyze-gap` | POST | 一次性流式 | 差距分析 |
+| `/api/ai/generate-plan` | POST | 一次性流式 | 生成学习计划 |
+| `/api/ai/review-weekly` | POST | 一次性流式 | 分析周报 |
+| `/api/ai/generate-report` | POST | 一次性流式 | 导出报告 |
+| `/api/chat` | GET | — | 会话列表 |
+| `/api/chat` | POST | 多轮对话流式 | 发送消息 |
+| `/api/chat/[id]` | GET | — | 会话详情 |
+| `/api/chat/[id]` | DELETE | — | 删除会话 |
 
 ## Prompt 设计原则
 
@@ -43,38 +110,20 @@ FDE 能力模型分三大类：
 你的任务是根据用户数据，给出具体、可执行、结构化的建议。
 ```
 
-### User Prompt
+### 多轮对话上下文
 
-携带具体的 profile / assessment / weekly_log 数据（JSON 或结构化文本）。
-
-## 调用流程
-
-```text
-页面按钮点击
-  ↓
-fetch /api/ai/{endpoint}
-  ↓
-API 读取数据库最新数据
-  ↓
-组装 prompt
-  ↓
-调用 dim-agent-sdk → DeepSeek
-  ↓
-解析返回
-  ↓
-写入 ai_summaries 表
-  ↓
-返回前端展示
-```
+对话模式中，system prompt + 全部历史消息（user/assistant 交替）一起传入 `chatMultiTurn()`，保持上下文记忆。
 
 ## 错误处理
 
 | 情况 | 处理 |
 |---|---|
 | DEEPSEEK_API_KEY 缺失 | 返回 500，提示配置 .env.local |
-| SDK 调用失败 | 返回 503，提示重试 |
-| 返回内容解析失败 | 返回原始文本，标记 unparseable |
+| SDK 调用失败 | SSE 返回 error 事件，前端展示错误 |
+| 返回内容解析失败 | 返回原始文本 |
 | 数据库读取失败 | 返回 500，提示检查 MySQL |
+| 对话 sessionId 不存在 | 返回 404 |
+| 对话消息为空 | 返回 400 |
 
 ## 降级策略
 

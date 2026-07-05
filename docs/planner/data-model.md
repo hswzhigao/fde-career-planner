@@ -96,6 +96,29 @@
 | related_id | Int? | 关联的记录 id（如 weekly_log id） |
 | created_at | DateTime | |
 
+---
+
+### chat_sessions — 对话会话
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | Int PK | |
+| title | String | 会话标题（取首条消息前 30 字） |
+| created_at | DateTime | |
+| updated_at | DateTime | |
+
+---
+
+### chat_messages — 对话消息
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | Int PK | |
+| session_id | Int FK | 关联 chat_sessions.id |
+| role | String | user / assistant |
+| content | Text | 消息内容 |
+| created_at | DateTime | |
+
 ## ER 关系
 
 ```text
@@ -105,9 +128,12 @@ profiles (1)
   └─ weekly_logs (N)
   └─ job_checklist_items (N)
   └─ ai_summaries (N)
+
+chat_sessions (1)
+  └─ chat_messages (N)         FK: session_id → chat_sessions.id (CASCADE)
 ```
 
-单用户场景下，所有数据都属于同一个用户，不做显式外键。
+单用户场景下，所有数据都属于同一个用户，不做显式外键。chat_messages 除外，它显式关联 chat_sessions。
 
 ## Seed 数据
 

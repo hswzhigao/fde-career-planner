@@ -1,6 +1,6 @@
 # FDE Personal Planner — Documentation Index
 
-本工作台用于帮助程序员规划向 Forward Deployed Engineer（FDE / 前线部署工程师）转型的全过程：诊断现状、评估能力差距、生成学习路线、追踪每周进展、准备求职材料。
+本工作台用于帮助程序员规划向 Forward Deployed Engineer（FDE / 前线部署工程师）转型的全过程：诊断现状、评估能力差距、生成学习路线、追踪每周进展、准备求职材料，并通过 AI 顾问实时对话解答转型问题。
 
 ## 设计文档
 
