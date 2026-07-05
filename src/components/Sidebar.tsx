@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/learning", label: "学习路线" },
   { href: "/weekly", label: "每周追踪" },
   { href: "/job-prep", label: "求职准备" },
+  { href: "/chat", label: "FDE 顾问" },
   { href: "/export", label: "总结导出" },
 ];
 

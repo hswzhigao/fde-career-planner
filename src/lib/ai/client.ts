@@ -63,3 +63,37 @@ export async function chatStream(
   await session.dispose();
   return { full: result.trim() };
 }
+
+/**
+ * Multi-turn conversation with streaming.
+ * Takes full message history, streams the response.
+ */
+export async function chatMultiTurn(
+  messages: { role: "system" | "user" | "assistant"; content: string }[],
+  onDelta?: (delta: string, accumulated: string) => void,
+): Promise<{ full: string }> {
+  const model = getModel();
+  const agent = createAgent({
+    model,
+    maxIterations: 1,
+    includeBuiltinTools: false,
+  });
+
+  const session = await agent.createSession();
+
+  // Send all messages in order
+  for (const msg of messages) {
+    session.send(msg.content);
+  }
+
+  let result = "";
+  for await (const event of session.receive()) {
+    if (event.type === "text_delta") {
+      result += event.delta ?? "";
+      onDelta?.(event.delta ?? "", result);
+    }
+  }
+
+  await session.dispose();
+  return { full: result.trim() };
+}

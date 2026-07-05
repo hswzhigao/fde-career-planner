@@ -84,3 +84,24 @@ model AiSummary {
 
   @@index([type])
 }
+
+model ChatSession {
+  id         Int      @id @default(autoincrement())
+  title      String   @default("FDE 顾问对话")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  messages   ChatMessage[]
+}
+
+model ChatMessage {
+  id         Int      @id @default(autoincrement())
+  session_id Int
+  role       String   // user | assistant
+  content    String   @db.Text
+  created_at DateTime @default(now())
+
+  session    ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+}
