@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AIStreamPanel from "./AIStreamPanel";
 
 interface Task {
   id: number;
@@ -32,10 +33,8 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default function LearningBoard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [aiKey, setAiKey] = useState(0);
 
   const load = () => {
     fetch("/api/learning")
@@ -63,43 +62,18 @@ export default function LearningBoard() {
     load();
   };
 
-  const runAI = async () => {
-    setAiLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/ai/generate-plan", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI 调用失败");
-      setAiResult(data.content);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "未知错误");
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
   if (loading) return <div className="text-gray-500">加载中…</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <button
-          onClick={runAI}
-          disabled={aiLoading}
-          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 font-medium text-sm"
-        >
-          {aiLoading ? "AI 生成中…" : "AI 生成学习计划"}
-        </button>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
+          onClick={() => setAiKey(k => k + 1)}
           className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium text-sm"
         >
           {showAdd ? "取消" : "手动添加任务"}
         </button>
       </div>
-
-      {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
 
       {showAdd && <AddTaskForm onAdded={load} onCancel={() => setShowAdd(false)} />}
 
@@ -153,12 +127,14 @@ export default function LearningBoard() {
         );
       })}
 
-      {aiResult && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">AI 计划详情</h2>
-          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">{aiResult}</div>
-        </div>
-      )}
+      <AIStreamPanel
+        key={aiKey}
+        title="AI 生成学习计划"
+        buttonLabel="AI 生成学习计划"
+        apiEndpoint="/api/ai/generate-plan"
+        accentColor="purple"
+        onComplete={load}
+      />
     </div>
   );
 }

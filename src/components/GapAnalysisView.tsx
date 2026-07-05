@@ -3,13 +3,11 @@
 import { useEffect, useState } from "react";
 import { SKILLS } from "@/lib/constants/skills";
 import { getStrengthsAndWeaknesses, recommendPath } from "@/lib/gap-rules";
+import AIStreamPanel from "./AIStreamPanel";
 
 export default function GapAnalysisView() {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/skills")
@@ -21,21 +19,6 @@ export default function GapAnalysisView() {
         setLoading(false);
       });
   }, []);
-
-  const runAI = async () => {
-    setAiLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/ai/analyze-gap", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI 调用失败");
-      setAiResult(data.content);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "未知错误");
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   if (loading) return <div className="text-gray-500">加载中…</div>;
 
@@ -84,23 +67,13 @@ export default function GapAnalysisView() {
         <p className="text-sm text-gray-700 bg-blue-50 p-4 rounded">{path}</p>
       </div>
 
-      {/* AI Analysis */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">AI 深度差距分析</h2>
-          <button
-            onClick={runAI}
-            disabled={aiLoading}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 font-medium text-sm"
-          >
-            {aiLoading ? "AI 分析中…" : "AI 生成差距分析"}
-          </button>
-        </div>
-        {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-        {aiResult && (
-          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">{aiResult}</div>
-        )}
-      </div>
+      {/* AI Streaming Analysis */}
+      <AIStreamPanel
+        title="AI 深度差距分析"
+        buttonLabel="AI 生成差距分析"
+        apiEndpoint="/api/ai/analyze-gap"
+        accentColor="purple"
+      />
     </div>
   );
 }

@@ -1,18 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { reviewWeekly } from "@/lib/ai/weekly";
+import { runStreamingAI } from "@/lib/ai/stream";
+import { SYSTEM_PROMPT, reviewWeeklyPrompt } from "@/lib/ai/prompts";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const logId = body.logId;
     if (!logId) {
-      return NextResponse.json({ error: "缺少 logId" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "缺少 logId" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const log = await prisma.weeklyLog.findUnique({ where: { id: logId } });
     if (!log) {
-      return NextResponse.json({ error: "周报不存在" }, { status: 404 });
+      return new Response(JSON.stringify({ error: "周报不存在" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const history = await prisma.weeklyLog.findMany({
@@ -26,19 +33,35 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const result = await reviewWeekly(
+    const userPrompt = reviewWeeklyPrompt(
       log as unknown as Record<string, unknown>,
       history,
     );
 
-    await prisma.aiSummary.create({
-      data: { type: "weekly_review", content: result, related_id: log.id },
-    });
+    const stream = await runStreamingAI(
+      SYSTEM_PROMPT,
+      userPrompt,
+      "weekly_review",
+      log.id,
+      async (full) => {
+        await prisma.aiSummary.create({
+          data: { type: "weekly_review", content: full, related_id: log.id },
+        });
+      },
+    );
 
-    return NextResponse.json({ content: result });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error("review-weekly error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

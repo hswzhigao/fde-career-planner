@@ -24,9 +24,22 @@ export function getModel() {
 }
 
 /**
- * Simple one-shot chat: send system + user prompts, return full text response.
+ * One-shot chat: send system + user prompts, return full text.
  */
 export async function chatOnce(systemPrompt: string, userPrompt: string): Promise<string> {
+  const { full } = await chatStream(systemPrompt, userPrompt);
+  return full;
+}
+
+/**
+ * Streaming chat: send system + user prompts, call onDelta for each text chunk.
+ * Returns the full text when done.
+ */
+export async function chatStream(
+  systemPrompt: string,
+  userPrompt: string,
+  onDelta?: (delta: string, accumulated: string) => void,
+): Promise<{ full: string }> {
   const model = getModel();
   const agent = createAgent({
     model,
@@ -36,19 +49,17 @@ export async function chatOnce(systemPrompt: string, userPrompt: string): Promis
 
   const session = await agent.createSession();
 
-  // Send system message first, then user message
-  // MessageContentInput = string | ContentBlock | ContentBlock[]
   session.send(systemPrompt);
   session.send(userPrompt);
 
-  // Collect text deltas from the stream
   let result = "";
   for await (const event of session.receive()) {
     if (event.type === "text_delta") {
       result += event.delta ?? "";
+      onDelta?.(event.delta ?? "", result);
     }
   }
 
   await session.dispose();
-  return result.trim();
+  return { full: result.trim() };
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import AIStreamPanel from "./AIStreamPanel";
 
 interface Profile {
   id: number;
@@ -193,48 +194,13 @@ export default function ProfileForm() {
         {saved && <span className="text-sm text-green-600">已保存 ✓</span>}
       </div>
 
-      {/* AI Summary */}
-      <AISummarySection />
-    </div>
-  );
-}
-
-function AISummarySection() {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const generate = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/ai/summarize-profile", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI 调用失败");
-      setResult(data.content);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "未知错误");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">AI 画像总结</h2>
-        <button
-          onClick={generate}
-          disabled={loading}
-          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 font-medium text-sm"
-        >
-          {loading ? "AI 分析中…" : "AI 一键生成画像总结"}
-        </button>
-      </div>
-      {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      {result && (
-        <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">{result}</div>
-      )}
+      {/* AI Summary - streaming */}
+      <AIStreamPanel
+        title="AI 画像总结"
+        buttonLabel="AI 一键生成画像总结"
+        apiEndpoint="/api/ai/summarize-profile"
+        accentColor="purple"
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AIStreamPanel from "./AIStreamPanel";
 
 interface WeeklyLog {
   id: number;
@@ -29,8 +30,7 @@ export default function WeeklyForm() {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [aiResults, setAiResults] = useState<Record<number, string>>({});
-  const [aiLoading, setAiLoading] = useState<number | null>(null);
+  const [expandedAI, setExpandedAI] = useState<number | null>(null);
 
   const load = () => {
     fetch("/api/weekly")
@@ -66,21 +66,7 @@ export default function WeeklyForm() {
   };
 
   const runAI = async (logId: number) => {
-    setAiLoading(logId);
-    try {
-      const res = await fetch("/api/ai/review-weekly", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAiResults((r) => ({ ...r, [logId]: data.content }));
-    } catch (e) {
-      setAiResults((r) => ({ ...r, [logId]: `错误: ${e instanceof Error ? e.message : "未知"}` }));
-    } finally {
-      setAiLoading(null);
-    }
+    setExpandedAI(expandedAI === logId ? null : logId);
   };
 
   if (loading) return <div className="text-gray-500">加载中…</div>;
@@ -140,13 +126,19 @@ export default function WeeklyForm() {
             {log.next_week_plan && <p className="text-sm text-gray-600"><b>下周：</b>{log.next_week_plan}</p>}
             <button
               onClick={() => runAI(log.id)}
-              disabled={aiLoading === log.id}
-              className="text-xs px-3 py-1 bg-purple-50 text-purple-700 rounded border border-purple-200 hover:bg-purple-100 disabled:opacity-50"
+              className="text-xs px-3 py-1 bg-purple-50 text-purple-700 rounded border border-purple-200 hover:bg-purple-100"
             >
-              {aiLoading === log.id ? "AI 分析中…" : "AI 分析周报"}
+              {expandedAI === log.id ? "收起 AI 分析" : "AI 分析周报"}
             </button>
-            {aiResults[log.id] && (
-              <div className="mt-2 text-sm text-gray-700 bg-purple-50 p-3 rounded whitespace-pre-wrap">{aiResults[log.id]}</div>
+            {expandedAI === log.id && (
+              <AIStreamPanel
+                key={log.id}
+                title={`第 ${log.week_number} 周 AI 分析`}
+                buttonLabel="重新生成分析"
+                apiEndpoint="/api/ai/review-weekly"
+                body={{ logId: log.id }}
+                accentColor="purple"
+              />
             )}
           </div>
         ))}

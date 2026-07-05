@@ -1,13 +1,16 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { generateReport } from "@/lib/ai/report";
+import { runStreamingAI } from "@/lib/ai/stream";
+import { SYSTEM_PROMPT, generateReportPrompt } from "@/lib/ai/prompts";
 import { SKILLS } from "@/lib/constants/skills";
 
 export async function POST() {
   try {
     const profile = await prisma.profile.findFirst();
     if (!profile) {
-      return NextResponse.json({ error: "请先填写个人画像" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "请先填写个人画像" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const records = await prisma.skillAssessment.findMany({
@@ -26,13 +29,11 @@ export async function POST() {
 
     const allTasks = await prisma.learningTask.findMany();
     const doneTasks = allTasks.filter((t) => t.status === "done").length;
-
     const weeklyCount = await prisma.weeklyLog.count();
-
     const allChecklist = await prisma.jobChecklistItem.findMany();
     const doneChecklist = allChecklist.filter((c) => c.is_done).length;
 
-    const result = await generateReport({
+    const userPrompt = generateReportPrompt({
       profile: profile as unknown as Record<string, unknown>,
       skills,
       learningProgress: { total: allTasks.length, done: doneTasks },
@@ -40,14 +41,30 @@ export async function POST() {
       jobPrepProgress: { total: allChecklist.length, done: doneChecklist },
     });
 
-    await prisma.aiSummary.create({
-      data: { type: "full_report", content: result },
-    });
+    const stream = await runStreamingAI(
+      SYSTEM_PROMPT,
+      userPrompt,
+      "full_report",
+      undefined,
+      async (full) => {
+        await prisma.aiSummary.create({
+          data: { type: "full_report", content: full },
+        });
+      },
+    );
 
-    return NextResponse.json({ content: result });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error("generate-report error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
