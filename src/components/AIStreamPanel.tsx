@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useAIStream } from "@/lib/hooks/useAIStream";
 
 interface AIStreamPanelProps {
@@ -28,12 +29,96 @@ export default function AIStreamPanel({
   const { loading, content, error, done, run, reset } = useAIStream();
   const accent = ACCENTS[accentColor];
 
+  // Follow-up Q&A state
+  const [followups, setFollowups] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [followupInput, setFollowupInput] = useState("");
+  const [followupLoading, setFollowupLoading] = useState(false);
+  const [followupStreaming, setFollowupStreaming] = useState("");
+
   const handleClick = async () => {
     reset();
+    setFollowups([]);
+    setFollowupStreaming("");
     await run(apiEndpoint, body);
     if (onComplete) {
-      // Small delay to let state settle
       setTimeout(onComplete, 100);
+    }
+  };
+
+  const sendFollowup = async () => {
+    if (!followupInput.trim() || followupLoading) return;
+
+    const userMsg = { role: "user" as const, content: followupInput };
+    const newFollowups = [...followups, userMsg];
+    setFollowups(newFollowups);
+    setFollowupInput("");
+    setFollowupLoading(true);
+    setFollowupStreaming("");
+
+    try {
+      const res = await fetch("/api/ai/followup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          previousContent: content,
+          followupHistory: followups,
+          question: followupInput,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "请求失败" }));
+        setFollowups((prev) => [...prev, { role: "assistant", content: `错误: ${data.error}` }]);
+        setFollowupLoading(false);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setFollowupLoading(false);
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let full = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "delta") {
+                full = data.accumulated;
+                setFollowupStreaming(data.accumulated);
+              } else if (data.type === "done") {
+                full = data.full;
+              } else if (data.type === "error") {
+                full = `错误: ${data.error}`;
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      setFollowups((prev) => [...prev, { role: "assistant", content: full }]);
+      setFollowupStreaming("");
+    } catch (e) {
+      setFollowups((prev) => [
+        ...prev,
+        { role: "assistant", content: `错误: ${e instanceof Error ? e.message : "未知"}` },
+      ]);
+    } finally {
+      setFollowupLoading(false);
     }
   };
 
@@ -95,6 +180,101 @@ export default function AIStreamPanel({
 
       {done && !error && (
         <div className="text-xs text-green-600">✓ 生成完成，已保存到数据库</div>
+      )}
+
+      {/* Follow-up Q&A — only show after initial result is done */}
+      {done && !error && content && (
+        <div className="border-t border-gray-200 pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">追问</span>
+            <span className="text-xs text-gray-400">基于上面的结果继续提问</span>
+          </div>
+
+          {/* Follow-up conversation history */}
+          {followups.length > 0 && (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {followups.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-brand-600 text-white rounded-br-sm"
+                        : `text-gray-700 rounded-bl-sm ${accent.bg} ${accent.border} border`
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Streaming follow-up response */}
+          {followupStreaming && (
+            <div className="flex justify-start">
+              <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm text-gray-700 rounded-bl-sm ${accent.bg} ${accent.border} border whitespace-pre-wrap`}>
+                {followupStreaming}
+                <span className={`inline-block w-2 h-4 ml-0.5 animate-pulse ${accent.text}`}>▊</span>
+              </div>
+            </div>
+          )}
+
+          {/* Loading indicator */}
+          {followupLoading && !followupStreaming && (
+            <div className="flex justify-start">
+              <div className={`px-3 py-2 rounded-lg text-gray-400 rounded-bl-sm ${accent.bg} ${accent.border} border`}>
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Follow-up input */}
+          <div className="flex gap-2">
+            <textarea
+              value={followupInput}
+              onChange={(e) => setFollowupInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendFollowup();
+                }
+              }}
+              placeholder="输入追问…（Enter 发送，Shift+Enter 换行）"
+              rows={1}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+              style={{ maxHeight: "100px" }}
+            />
+            <button
+              onClick={sendFollowup}
+              disabled={followupLoading || !followupInput.trim()}
+              className="px-4 py-2 bg-gray-700 text-white rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+            >
+              {followupLoading ? "…" : "追问"}
+            </button>
+          </div>
+
+          {/* Quick suggestion buttons */}
+          {followups.length === 0 && !followupLoading && (
+            <div className="flex flex-wrap gap-2">
+              {["给我详细的学习计划", "怎么补齐这个短板？", "帮我改简历"].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setFollowupInput(q)}
+                  className="text-xs px-3 py-1 bg-gray-50 text-gray-600 rounded-full border border-gray-200 hover:bg-gray-100"
+                >
+                  💬 {q}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
