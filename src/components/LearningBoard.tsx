@@ -34,7 +34,6 @@ export default function LearningBoard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [aiKey, setAiKey] = useState(0);
 
   const load = () => {
     fetch("/api/learning")
@@ -68,7 +67,7 @@ export default function LearningBoard() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <button
-          onClick={() => setAiKey(k => k + 1)}
+          onClick={() => setShowAdd(!showAdd)}
           className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium text-sm"
         >
           {showAdd ? "取消" : "手动添加任务"}
@@ -128,7 +127,6 @@ export default function LearningBoard() {
       })}
 
       <AIStreamPanel
-        key={aiKey}
         title="AI 生成学习计划"
         buttonLabel="AI 生成学习计划"
         apiEndpoint="/api/ai/generate-plan"
