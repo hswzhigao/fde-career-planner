@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAIStream } from "@/lib/hooks/useAIStream";
+import { MarkdownContent } from "@/components/ui/MarkdownContent";
 
 interface AIStreamPanelProps {
   title: string;
@@ -151,8 +152,8 @@ export default function AIStreamPanel({
 
       {/* Streaming content */}
       {content && (
-        <div className={`prose prose-sm max-w-none text-stone-700 whitespace-pre-wrap p-4 rounded border ${accent.bg} ${accent.border}`}>
-          {content}
+        <div className={`p-4 rounded border ${accent.bg} ${accent.border}`}>
+          <MarkdownContent content={content} />
           {loading && (
             <span className={`inline-block w-2 h-4 ml-0.5 animate-pulse ${accent.text}`}>▊</span>
           )}
@@ -199,13 +200,17 @@ export default function AIStreamPanel({
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap ${
+                    className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm ${
                       msg.role === "user"
                         ? "bg-orange-500 text-white rounded-br-sm"
                         : `text-stone-700 rounded-bl-sm ${accent.bg} ${accent.border} border`
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === "assistant" ? (
+                      <MarkdownContent content={msg.content} />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -215,8 +220,8 @@ export default function AIStreamPanel({
           {/* Streaming follow-up response */}
           {followupStreaming && (
             <div className="flex justify-start">
-              <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm text-stone-700 rounded-bl-sm ${accent.bg} ${accent.border} border whitespace-pre-wrap`}>
-                {followupStreaming}
+              <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm text-stone-700 rounded-bl-sm ${accent.bg} ${accent.border} border`}>
+                <MarkdownContent content={followupStreaming} />
                 <span className={`inline-block w-2 h-4 ml-0.5 animate-pulse ${accent.text}`}>▊</span>
               </div>
             </div>

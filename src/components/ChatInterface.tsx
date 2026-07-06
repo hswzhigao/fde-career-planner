@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { MarkdownContent } from "@/components/ui/MarkdownContent";
 
 interface Message {
   id?: number;
@@ -241,7 +242,7 @@ export default function ChatInterface() {
                 }`}
               >
                 {msg.role === "assistant" ? (
-                  <div className="prose prose-sm max-w-none whitespace-pre-wrap">{msg.content}</div>
+                  <MarkdownContent content={msg.content} />
                 ) : (
                   <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
                 )}
@@ -253,10 +254,7 @@ export default function ChatInterface() {
           {streamingContent && (
             <div className="flex justify-start">
               <div className="max-w-[80%] px-4 py-3 rounded-2xl bg-orange-50 text-stone-800 rounded-bl-sm">
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                  {streamingContent}
-                  <span className="inline-block w-2 h-4 ml-0.5 animate-pulse text-orange-600">▊</span>
-                </div>
+                <MarkdownContent content={streamingContent} />
               </div>
             </div>
           )}
