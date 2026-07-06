@@ -19,16 +19,17 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await requireUser(req);
     const body = await req.json();
+    const { userId: _uid, id: _id, ...data } = body;
     const existing = await prisma.profile.findFirst({ where: { userId: session.userId } });
 
     if (!existing) {
-      const created = await prisma.profile.create({ data: { ...body, userId: session.userId } });
+      const created = await prisma.profile.create({ data: { ...data, userId: session.userId } });
       return NextResponse.json(created);
     }
 
     const updated = await prisma.profile.update({
       where: { id: existing.id },
-      data: body,
+      data,
     });
     return NextResponse.json(updated);
   } catch (e) {

@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const session = await requireUser(req);
     const body = await req.json();
-    const { id, ...data } = body;
+    const { id, userId: _uid, ...data } = body;
     const result = await prisma.learningTask.updateMany({
       where: { id, userId: session.userId },
       data,
