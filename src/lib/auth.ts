@@ -35,7 +35,9 @@ export function signSession(user: SessionUser) {
 
 export function verifySessionToken(token: string): SessionUser | null {
   try {
-    const decoded = jwt.verify(token, getJwtSecret()) as JwtPayload;
+    const decoded = jwt.verify(token, getJwtSecret());
+    if (typeof decoded !== "object" || decoded === null) return null;
+
     const userId = Number(decoded.sub);
     if (!Number.isInteger(userId) || userId <= 0) return null;
     if (decoded.role !== "user" && decoded.role !== "admin") return null;
@@ -89,15 +91,17 @@ export function clearSessionCookie(res: NextResponse) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     maxAge: 0,
+    expires: new Date(0),
     path: "/",
   });
 }
 
 export function authErrorResponse(error: unknown) {
-  const status =
+  const errorStatus =
     typeof error === "object" && error !== null && "status" in error
       ? Number((error as { status: unknown }).status)
       : 500;
+  const status = errorStatus === 401 || errorStatus === 403 ? errorStatus : 500;
   const message = status === 401 ? "未登录" : status === 403 ? "无权限" : "服务器错误";
-  return NextResponse.json({ error: message }, { status: status || 500 });
+  return NextResponse.json({ error: message }, { status });
 }
