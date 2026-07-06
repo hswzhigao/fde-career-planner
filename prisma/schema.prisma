@@ -7,50 +7,83 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 单用户本地工作台，所有表共享同一用户隐式上下文
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  nickname     String   @default("")
+  avatarSeed   String   @default("")
+  role         String   @default("user")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profiles          Profile[]
+  skillAssessments  SkillAssessment[]
+  learningTasks     LearningTask[]
+  weeklyLogs        WeeklyLog[]
+  jobChecklistItems JobChecklistItem[]
+  aiSummaries       AiSummary[]
+  chatSessions      ChatSession[]
+
+  @@index([role])
+}
 
 model Profile {
-  id                        Int      @id @default(autoincrement())
-  current_role              String   @default("")
-  years_of_experience       Int      @default(0)
-  tech_stack                String   @default("")
-  project_experience        String   @default("")
-  has_customer_communication Boolean @default(false)
-  has_tob_delivery          Boolean  @default(false)
-  has_ai_experience         Boolean  @default(false)
-  can_travel                Boolean  @default(false)
-  target_role_type          String   @default("")
-  target_salary             String   @default("")
-  weekly_study_hours        Int      @default(10)
-  preferred_industries      String   @default("")
-  created_at                DateTime @default(now())
-  updated_at                DateTime @updatedAt
+  id                         Int      @id @default(autoincrement())
+  userId                     Int
+  current_role               String   @default("")
+  years_of_experience        Int      @default(0)
+  tech_stack                 String   @default("")
+  project_experience         String   @default("")
+  has_customer_communication Boolean  @default(false)
+  has_tob_delivery           Boolean  @default(false)
+  has_ai_experience          Boolean  @default(false)
+  can_travel                 Boolean  @default(false)
+  target_role_type           String   @default("")
+  target_salary              String   @default("")
+  weekly_study_hours         Int      @default(10)
+  preferred_industries       String   @default("")
+  created_at                 DateTime @default(now())
+  updated_at                 DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model SkillAssessment {
   id          Int      @id @default(autoincrement())
-  category    String   // delivery | ai_engineering | business
+  userId      Int
+  category    String
   skill_key   String
-  score       Int      // 1-5
+  score       Int
   assessed_at DateTime @default(now())
 
-  @@index([category, assessed_at])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category, assessed_at])
 }
 
 model LearningTask {
-  id        Int       @id @default(autoincrement())
-  phase     String    // 30 | 60 | 90
-  title     String
-  category  String    // delivery | ai_engineering | business
-  priority  String    @default("medium") // high | medium | low
-  status    String    @default("pending") // pending | in_progress | done
-  due_date  DateTime?
-  notes     String?
-  created_at DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  phase      String
+  title      String
+  category   String
+  priority   String    @default("medium")
+  status     String    @default("pending")
+  due_date   DateTime?
+  notes      String?
+  created_at DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, phase])
 }
 
 model WeeklyLog {
   id                Int      @id @default(autoincrement())
+  userId            Int
   week_number       Int
   learned           String   @default("")
   project_progress  String   @default("")
@@ -61,47 +94,59 @@ model WeeklyLog {
   next_week_plan    String   @default("")
   created_at        DateTime @default(now())
 
-  @@index([week_number])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, week_number])
 }
 
 model JobChecklistItem {
   id         Int     @id @default(autoincrement())
-  section    String  // resume | portfolio | interview | salary
+  userId     Int
+  section    String
   title      String
   is_done    Boolean @default(false)
   notes      String?
   sort_order Int     @default(0)
 
-  @@index([section])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, section])
 }
 
 model AiSummary {
   id         Int      @id @default(autoincrement())
-  type       String   // profile_summary | gap_analysis | learning_plan | weekly_review | full_report
+  userId     Int
+  type       String
   content    String   @db.Text
   related_id Int?
   created_at DateTime @default(now())
 
-  @@index([type])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
 }
 
 model ChatSession {
   id         Int      @id @default(autoincrement())
+  userId     Int
   title      String   @default("FDE 顾问对话")
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  messages   ChatMessage[]
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId, updated_at])
 }
 
 model ChatMessage {
   id         Int      @id @default(autoincrement())
   session_id Int
-  role       String   // user | assistant
+  role       String
   content    String   @db.Text
   created_at DateTime @default(now())
 
-  session    ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  session ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
 
   @@index([session_id])
 }
