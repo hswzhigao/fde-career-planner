@@ -15,6 +15,11 @@ export async function DELETE(
     if (id === session.userId) {
       return NextResponse.json({ error: "不能删除自己" }, { status: 400 });
     }
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+    if (target?.role === "admin") {
+      const adminCount = await prisma.user.count({ where: { role: "admin" } });
+      if (adminCount <= 1) return NextResponse.json({ error: "不能删除最后一个管理员" }, { status: 400 });
+    }
     await prisma.user.delete({ where: { id } });
     return NextResponse.json({ deleted: true });
   } catch (e) {
