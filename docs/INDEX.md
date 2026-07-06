@@ -8,6 +8,8 @@
   - [数据模型](planner/data-model.md)
   - [AI 集成](planner/ai-integration.md)
   - [页面与交互](planner/pages.md)
+  - [认证系统](planner/auth.md)
+  - [UI 设计系统](planner/ui-design-system.md)
 
 ## 交付计划
 
