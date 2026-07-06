@@ -1,71 +1,76 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, memo, type ReactNode, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
 
-/** Copy button for code blocks */
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+/** Add copy buttons to all <pre> elements via DOM manipulation */
+function usePreCopyButtons(rootRef: React.RefObject<HTMLDivElement | null>, content: string) {
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
-  };
+    const pres = root.querySelectorAll("pre");
+    const wrappers: HTMLDivElement[] = [];
 
-  return (
-    <button
-      onClick={handleCopy}
-      className="absolute top-2 right-2 px-2 py-1 text-xs rounded-md bg-stone-700/80 text-stone-200 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-stone-600 z-10"
-    >
-      {copied ? "已复制 ✓" : "复制"}
-    </button>
-  );
-}
+    pres.forEach((pre) => {
+      // Wrap pre in a relative container
+      const wrapper = document.createElement("div");
+      wrapper.className = "group relative my-3 rounded-xl overflow-hidden border border-stone-700/30";
+      pre.parentNode?.insertBefore(wrapper, pre);
+      wrapper.appendChild(pre);
 
-/** Extract language label from className like "language-js" */
-function getLanguage(className?: string): string | null {
-  const match = className?.match(/language-(\w+)/);
-  return match ? match[1] : null;
-}
+      // Remove default pre styling (we use wrapper)
+      pre.className = "overflow-x-auto bg-stone-900 p-4 text-sm leading-relaxed !my-0 !rounded-none";
+      pre.classList.add("group");
 
-/** Custom code block renderer with copy button and language label */
-function CodeBlock({ className, children }: { className?: string; children?: React.ReactNode }) {
-  const isInline = !className;
-  const text = typeof children === "string" ? children : String(children ?? "");
-  const lang = getLanguage(className);
+      // Add copy button
+      const btn = document.createElement("button");
+      btn.className =
+        "absolute top-2 right-2 z-10 px-2 py-1 text-xs rounded-md " +
+        "bg-stone-700/80 text-stone-200 opacity-0 group-hover:opacity-100 " +
+        "transition-opacity hover:bg-stone-600";
+      btn.textContent = "复制";
+      btn.addEventListener("click", async () => {
+        const text = pre.textContent ?? "";
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = "已复制 ✓";
+          setTimeout(() => { btn.textContent = "复制"; }, 2000);
+        } catch {
+          // ignore
+        }
+      });
+      wrapper.appendChild(btn);
+      wrappers.push(wrapper);
+    });
 
-  if (isInline) {
-    return (
-      <code className="px-1.5 py-0.5 rounded bg-stone-100 text-orange-700 text-[0.85em] font-mono break-words">
-        {children}
-      </code>
-    );
-  }
-
-  return (
-    <div className="group relative my-3 rounded-xl overflow-hidden border border-stone-700/30">
-      {/* Header bar with language label */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-stone-800 border-b border-stone-700/50">
-        <span className="text-xs text-stone-400 font-mono">{lang || "code"}</span>
-      </div>
-      <CopyButton text={text} />
-      <pre className="overflow-x-auto bg-stone-900 p-4 text-sm leading-relaxed !mt-0 !rounded-none">
-        <code className={className}>{children}</code>
-      </pre>
-    </div>
-  );
+    return () => {
+      // Unwrap: move pre back to original parent, remove wrapper
+      wrappers.forEach((w) => {
+        const pre = w.querySelector("pre");
+        if (pre) w.parentNode?.insertBefore(pre, w);
+        w.remove();
+      });
+    };
+  }, [rootRef, content]);
 }
 
 function MarkdownContentImpl({ content }: { content: string }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Ensure fenced code blocks are preceded by a blank line (Markdown spec requirement).
+  // AI outputs sometimes put ``` directly after text without any newline.
+  const normalized = content
+    .replace(/([^\n])```/g, "$1\n\n```")
+    .replace(/\n```/g, "\n\n```")
+    .replace(/\n\n\n+```/g, "\n\n```");
+
+  usePreCopyButtons(rootRef, normalized);
+
   return (
-    <div className="
+    <div
+      ref={rootRef}
+      className="
       text-[15px] leading-[1.75] text-stone-700
 
       [&_h1]:text-xl [&_h1]:font-bold [&_h1]:text-stone-900 [&_h1]:mt-5 [&_h1]:mb-2.5
@@ -97,20 +102,20 @@ function MarkdownContentImpl({ content }: { content: string }) {
       [&_td]:border [&_td]:border-orange-100 [&_td]:px-3 [&_td]:py-2 [&_td]:text-stone-600
       [&_tr:nth-child(even)]:bg-orange-50/30
 
-      [&_pre]:!bg-stone-900
-      [&_pre_code]:!bg-transparent [&_pre_code]:!p-0
+      [&_pre]:bg-stone-900 [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:my-3
+      [&_pre]:overflow-x-auto [&_pre]:text-sm [&_pre]:leading-relaxed
+      [&_pre_code]:!bg-transparent [&_pre_code]:!p-0 [&_pre_code]:!text-stone-100 [&_pre_code]:!font-mono
+
+      [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded
+      [&_:not(pre)>code]:bg-stone-100 [&_:not(pre)>code]:text-orange-700
+      [&_:not(pre)>code]:text-[0.85em] [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:break-words
 
       [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-3
     ">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
-        components={{
-          code: CodeBlock as never,
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+        children={normalized}
+      />
     </div>
   );
 }
