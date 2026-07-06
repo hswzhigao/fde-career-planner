@@ -4,20 +4,10 @@ import { DEFAULT_LEARNING_TASKS } from "../src/lib/constants/learning-tasks";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("Seeding...");
-
-  // 清空已有数据
-  await prisma.aiSummary.deleteMany();
-  await prisma.weeklyLog.deleteMany();
-  await prisma.learningTask.deleteMany();
-  await prisma.jobChecklistItem.deleteMany();
-  await prisma.skillAssessment.deleteMany();
-  await prisma.profile.deleteMany();
-
-  // Profile 占位
+export async function seedForUser(userId: number) {
   await prisma.profile.create({
     data: {
+      userId,
       current_role: "",
       years_of_experience: 0,
       tech_stack: "",
@@ -25,17 +15,17 @@ async function main() {
     },
   });
 
-  // Job checklist
-  for (const item of DEFAULT_CHECKLIST) {
-    await prisma.jobChecklistItem.create({ data: item });
-  }
+  await prisma.jobChecklistItem.createMany({
+    data: DEFAULT_CHECKLIST.map((item) => ({ ...item, userId })),
+  });
 
-  // Learning tasks
-  for (const task of DEFAULT_LEARNING_TASKS) {
-    await prisma.learningTask.create({ data: task });
-  }
+  await prisma.learningTask.createMany({
+    data: DEFAULT_LEARNING_TASKS.map((task) => ({ ...task, userId })),
+  });
+}
 
-  console.log(`Seeded: 1 profile, ${DEFAULT_CHECKLIST.length} checklist items, ${DEFAULT_LEARNING_TASKS.length} learning tasks`);
+async function main() {
+  console.log("Seed is now user-scoped. Create an account through /register to initialize data.");
 }
 
 main()
