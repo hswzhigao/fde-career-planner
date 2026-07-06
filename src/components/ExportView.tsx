@@ -48,23 +48,23 @@ export default function ExportView() {
     URL.revokeObjectURL(url);
   };
 
-  if (loading) return <div className="text-gray-500">加载中…</div>;
+  if (loading) return <div className="text-stone-500">加载中…</div>;
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">可复制文本摘要</h2>
+          <h2 className="text-lg font-semibold text-stone-900">可复制文本摘要</h2>
           <div className="flex gap-2">
-            <button onClick={copy} className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700">
+            <button onClick={copy} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">
               {copied ? "已复制 ✓" : "复制"}
             </button>
-            <button onClick={download} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200">
+            <button onClick={download} className="px-4 py-2 bg-gray-100 text-stone-700 rounded-xl text-sm font-medium hover:bg-gray-200">
               下载 Markdown
             </button>
           </div>
         </div>
-        <pre className="bg-gray-50 p-4 rounded text-sm text-gray-700 whitespace-pre-wrap font-mono">{text}</pre>
+        <pre className="bg-orange-50/40 p-4 rounded text-sm text-stone-700 whitespace-pre-wrap font-mono">{text}</pre>
       </div>
 
       <AIStreamPanel

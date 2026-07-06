@@ -68,12 +68,12 @@ export default function ProfileForm() {
     router.refresh();
   };
 
-  if (loading) return <div className="text-gray-500">加载中…</div>;
+  if (loading) return <div className="text-stone-500">加载中…</div>;
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">基本信息</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-stone-900">基本信息</h2>
 
         <Field label="当前岗位">
           <input
@@ -125,7 +125,7 @@ export default function ProfileForm() {
         </Field>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">经验标签</p>
+          <p className="text-sm font-medium text-stone-700">经验标签</p>
           <Checkbox
             checked={!!form.has_customer_communication}
             onChange={(v) => update("has_customer_communication", v)}
@@ -149,8 +149,8 @@ export default function ProfileForm() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">目标与偏好</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-stone-900">目标与偏好</h2>
 
         <Field label="目标岗位类型">
           <input
@@ -187,7 +187,7 @@ export default function ProfileForm() {
         <button
           onClick={save}
           disabled={saving}
-          className="px-6 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700 disabled:opacity-50 font-medium text-sm"
+          className="px-6 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 disabled:opacity-50 font-medium text-sm"
         >
           {saving ? "保存中…" : "保存"}
         </button>
@@ -206,12 +206,12 @@ export default function ProfileForm() {
 }
 
 const inputCls =
-  "w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500";
+  "w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-stone-700 mb-1">{label}</label>
       {children}
     </div>
   );
@@ -232,9 +232,9 @@ function Checkbox({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+        className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
       />
-      <span className="text-sm text-gray-700">{label}</span>
+      <span className="text-sm text-stone-700">{label}</span>
     </label>
   );
 }

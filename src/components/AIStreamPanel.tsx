@@ -14,7 +14,7 @@ interface AIStreamPanelProps {
 
 const ACCENTS = {
   purple: { btn: "bg-purple-600 hover:bg-purple-700", bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700" },
-  blue: { btn: "bg-brand-600 hover:bg-brand-700", bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
+  blue: { btn: "bg-orange-500 hover:bg-orange-600", bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
   green: { btn: "bg-green-600 hover:bg-green-700", bg: "bg-green-50", border: "border-green-200", text: "text-green-700" },
 };
 
@@ -123,13 +123,13 @@ export default function AIStreamPanel({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
         <button
           onClick={handleClick}
           disabled={loading}
-          className={`px-4 py-2 text-white rounded-md disabled:opacity-50 font-medium text-sm ${accent.btn}`}
+          className={`px-4 py-2 text-white rounded-xl disabled:opacity-50 font-medium text-sm ${accent.btn}`}
         >
           {loading ? (
             <span className="flex items-center gap-2">
@@ -151,7 +151,7 @@ export default function AIStreamPanel({
 
       {/* Streaming content */}
       {content && (
-        <div className={`prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap p-4 rounded border ${accent.bg} ${accent.border}`}>
+        <div className={`prose prose-sm max-w-none text-stone-700 whitespace-pre-wrap p-4 rounded border ${accent.bg} ${accent.border}`}>
           {content}
           {loading && (
             <span className={`inline-block w-2 h-4 ml-0.5 animate-pulse ${accent.text}`}>▊</span>
@@ -161,18 +161,18 @@ export default function AIStreamPanel({
 
       {/* Empty state hint */}
       {!content && !error && !loading && (
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-stone-400">
           点击上方按钮，AI 将实时生成分析结果
         </p>
       )}
 
       {/* Status bar */}
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+        <div className="flex items-center gap-2 text-xs text-stone-400">
           <div className="flex gap-1">
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
           <span>正在调用 DeepSeek 模型，实时返回中…</span>
         </div>
@@ -184,10 +184,10 @@ export default function AIStreamPanel({
 
       {/* Follow-up Q&A — only show after initial result is done */}
       {done && !error && content && (
-        <div className="border-t border-gray-200 pt-4 space-y-3">
+        <div className="border-t border-orange-100 pt-4 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">追问</span>
-            <span className="text-xs text-gray-400">基于上面的结果继续提问</span>
+            <span className="text-sm font-medium text-stone-700">追问</span>
+            <span className="text-xs text-stone-400">基于上面的结果继续提问</span>
           </div>
 
           {/* Follow-up conversation history */}
@@ -199,10 +199,10 @@ export default function AIStreamPanel({
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
+                    className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap ${
                       msg.role === "user"
-                        ? "bg-brand-600 text-white rounded-br-sm"
-                        : `text-gray-700 rounded-bl-sm ${accent.bg} ${accent.border} border`
+                        ? "bg-orange-500 text-white rounded-br-sm"
+                        : `text-stone-700 rounded-bl-sm ${accent.bg} ${accent.border} border`
                     }`}
                   >
                     {msg.content}
@@ -215,7 +215,7 @@ export default function AIStreamPanel({
           {/* Streaming follow-up response */}
           {followupStreaming && (
             <div className="flex justify-start">
-              <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm text-gray-700 rounded-bl-sm ${accent.bg} ${accent.border} border whitespace-pre-wrap`}>
+              <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm text-stone-700 rounded-bl-sm ${accent.bg} ${accent.border} border whitespace-pre-wrap`}>
                 {followupStreaming}
                 <span className={`inline-block w-2 h-4 ml-0.5 animate-pulse ${accent.text}`}>▊</span>
               </div>
@@ -225,11 +225,11 @@ export default function AIStreamPanel({
           {/* Loading indicator */}
           {followupLoading && !followupStreaming && (
             <div className="flex justify-start">
-              <div className={`px-3 py-2 rounded-lg text-gray-400 rounded-bl-sm ${accent.bg} ${accent.border} border`}>
+              <div className={`px-3 py-2 rounded-2xl text-stone-400 rounded-bl-sm ${accent.bg} ${accent.border} border`}>
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span className="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             </div>
@@ -248,13 +248,13 @@ export default function AIStreamPanel({
               }}
               placeholder="输入追问…（Enter 发送，Shift+Enter 换行）"
               rows={1}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
               style={{ maxHeight: "100px" }}
             />
             <button
               onClick={sendFollowup}
               disabled={followupLoading || !followupInput.trim()}
-              className="px-4 py-2 bg-gray-700 text-white rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+              className="px-4 py-2 bg-stone-700 text-white rounded-xl text-sm font-medium hover:bg-stone-800 disabled:opacity-50"
             >
               {followupLoading ? "…" : "追问"}
             </button>
@@ -267,7 +267,7 @@ export default function AIStreamPanel({
                 <button
                   key={q}
                   onClick={() => setFollowupInput(q)}
-                  className="text-xs px-3 py-1 bg-gray-50 text-gray-600 rounded-full border border-gray-200 hover:bg-gray-100"
+                  className="text-xs px-3 py-1 bg-orange-50/40 text-stone-600 rounded-full border border-orange-100 hover:bg-orange-100"
                 >
                   💬 {q}
                 </button>
