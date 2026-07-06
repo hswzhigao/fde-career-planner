@@ -1,11 +1,16 @@
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { authErrorResponse, requireUser } from "@/lib/auth";
 import { runStreamingAI } from "@/lib/ai/stream";
 import { SYSTEM_PROMPT, analyzeGapPrompt } from "@/lib/ai/prompts";
 import { SKILLS } from "@/lib/constants/skills";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
-    const profile = await prisma.profile.findFirst();
+    const session = await requireUser(req);
+    const profile = await prisma.profile.findFirst({
+      where: { userId: session.userId },
+    });
     if (!profile) {
       return new Response(JSON.stringify({ error: "请先填写个人画像" }), {
         status: 400,
@@ -14,6 +19,7 @@ export async function POST() {
     }
 
     const records = await prisma.skillAssessment.findMany({
+      where: { userId: session.userId },
       orderBy: { assessed_at: "desc" },
     });
     const latest = new Map<string, number>();
@@ -39,7 +45,7 @@ export async function POST() {
       undefined,
       async (full) => {
         await prisma.aiSummary.create({
-          data: { type: "gap_analysis", content: full },
+          data: { type: "gap_analysis", content: full, userId: session.userId },
         });
       },
     );
@@ -52,10 +58,6 @@ export async function POST() {
       },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return authErrorResponse(e);
   }
 }

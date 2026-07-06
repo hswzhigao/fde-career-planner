@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { authErrorResponse, requireUser } from "@/lib/auth";
 import { runStreamingAI } from "@/lib/ai/stream";
 import { SYSTEM_PROMPT, reviewWeeklyPrompt } from "@/lib/ai/prompts";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireUser(req);
     const body = await req.json();
     const logId = body.logId;
     if (!logId) {
@@ -14,7 +16,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const log = await prisma.weeklyLog.findUnique({ where: { id: logId } });
+    const log = await prisma.weeklyLog.findFirst({
+      where: { id: logId, userId: session.userId },
+    });
     if (!log) {
       return new Response(JSON.stringify({ error: "周报不存在" }), {
         status: 404,
@@ -23,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const history = await prisma.weeklyLog.findMany({
-      where: { week_number: { lt: log.week_number } },
+      where: { userId: session.userId, week_number: { lt: log.week_number } },
       orderBy: { week_number: "asc" },
       select: {
         week_number: true,
@@ -45,7 +49,7 @@ export async function POST(req: NextRequest) {
       log.id,
       async (full) => {
         await prisma.aiSummary.create({
-          data: { type: "weekly_review", content: full, related_id: log.id },
+          data: { type: "weekly_review", content: full, related_id: log.id, userId: session.userId },
         });
       },
     );
@@ -58,10 +62,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return authErrorResponse(e);
   }
 }

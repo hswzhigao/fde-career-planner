@@ -1,11 +1,14 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/db";
+import { authErrorResponse, requireUser } from "@/lib/auth";
 import { chatMultiTurn } from "@/lib/ai/client";
 import { SYSTEM_PROMPT } from "@/lib/ai/prompts";
 
 // POST: follow-up Q&A based on a previous AI result
 export async function POST(req: NextRequest) {
   try {
+    // Ensure the request is authenticated before starting the stream.
+    await requireUser(req);
+
     const body = await req.json();
     const { previousContent, followupHistory, question } = body;
 
@@ -72,10 +75,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return authErrorResponse(e);
   }
 }
