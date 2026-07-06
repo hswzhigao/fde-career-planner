@@ -1,10 +1,27 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function safeRedirectPath(next: string | null) {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return "/";
+  }
+
+  return next;
+}
+
+async function readErrorMessage(res: Response, fallback: string) {
+  try {
+    const data = (await res.json()) as { error?: unknown };
+    return typeof data.error === "string" && data.error ? data.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -17,21 +34,25 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error || "登录失败");
-      return;
+      if (!res.ok) {
+        setError(await readErrorMessage(res, "登录失败"));
+        return;
+      }
+
+      router.push(safeRedirectPath(searchParams.get("next")));
+      router.refresh();
+    } catch {
+      setError("登录失败");
+    } finally {
+      setLoading(false);
     }
-
-    router.push(searchParams.get("next") || "/");
-    router.refresh();
   }
 
   return (
@@ -90,5 +111,19 @@ export default function LoginPage() {
         </p>
       </form>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-orange-50/40 p-6">
+          <p className="text-sm text-stone-500">加载中…</p>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

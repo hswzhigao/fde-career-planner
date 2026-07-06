@@ -11,6 +11,15 @@ type RegisterForm = {
   confirmPassword: string;
 };
 
+async function readErrorMessage(res: Response, fallback: string) {
+  try {
+    const data = (await res.json()) as { error?: unknown };
+    return typeof data.error === "string" && data.error ? data.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState<RegisterForm>({
@@ -28,24 +37,34 @@ export default function RegisterPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error || "注册失败");
+    if (form.password !== form.confirmPassword) {
+      setError("两次输入的密码不一致");
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) {
+        setError(await readErrorMessage(res, "注册失败"));
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("注册失败");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
