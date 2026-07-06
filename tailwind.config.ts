@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
 
 // Warm (orange-based) palette. `brand` is an alias to the same warm values so
 // existing components using `brand-600` etc. continue to work while migrating.
@@ -28,7 +29,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [typography],
 };
 
 export default config;
