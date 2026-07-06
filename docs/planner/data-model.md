@@ -2,11 +2,29 @@
 
 ## 表结构
 
+### users — 用户账号
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | Int PK | 主键 |
+| email | String @unique | 邮箱 |
+| passwordHash | String | bcrypt 哈希（cost 10） |
+| nickname | String @default("") | 昵称，空则取邮箱 @ 前部分 |
+| avatarSeed | String @default("") | DiceBear 头像种子 |
+| role | String @default("user") | "user" \| "admin" |
+| createdAt | DateTime @default(now()) | 注册时间 |
+| updatedAt | DateTime @updatedAt | 更新时间 |
+
+第一个注册用户自动 `role = admin`，之后为 `user`。
+
+---
+
 ### profiles — 个人画像
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | Int PK | 主键 |
+| userId | Int FK → users.id | 所属用户（Cascade） |
 | current_role | String | 当前岗位 |
 | years_of_experience | Int | 工作年限 |
 | tech_stack | String | 技术栈，逗号分隔或自由文本 |
@@ -22,7 +40,7 @@
 | created_at | DateTime | 创建时间 |
 | updated_at | DateTime | 更新时间 |
 
-单用户本地使用，只保留一条记录，更新覆盖。
+每个用户一条记录，按 userId 取，更新覆盖。
 
 ---
 
@@ -31,6 +49,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | Int PK | |
+| userId | Int FK → users.id | 所属用户（Cascade） |
 | category | String | delivery / ai_engineering / business |
 | skill_key | String | 如 requirement_interview |
 | score | Int | 1-5 |
@@ -45,6 +64,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | Int PK | |
+| userId | Int FK → users.id | 所属用户（Cascade） |
 | phase | String | 30 / 60 / 90 |
 | title | String | 任务名 |
 | category | String | delivery / ai_engineering / business |
@@ -61,6 +81,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | Int PK | |
+| userId | Int FK → users.id | 所属用户（Cascade） |
 | week_number | Int | 第几周 |
 | learned | Text | 本周学习了什么 |
 | project_progress | Text | 项目进展 |
@@ -78,6 +99,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | Int PK | |
+| userId | Int FK → users.id | 所属用户（Cascade） |
 | section | String | resume / portfolio / interview / salary |
 | title | String | 清单项名称 |
 | is_done | Boolean | 是否完成 |
@@ -91,6 +113,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | Int PK | |
+| userId | Int FK → users.id | 所属用户（Cascade） |
 | type | String | profile_summary / gap_analysis / learning_plan / weekly_review / full_report |
 | content | Text | AI 返回的结构化内容 |
 | related_id | Int? | 关联的记录 id（如 weekly_log id） |
@@ -103,6 +126,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | Int PK | |
+| userId | Int FK → users.id | 所属用户（Cascade） |
 | title | String | 会话标题（取首条消息前 30 字） |
 | created_at | DateTime | |
 | updated_at | DateTime | |
@@ -122,22 +146,22 @@
 ## ER 关系
 
 ```text
-profiles (1)
-  └─ skill_assessments (N)     by implicit single-user
+users (1)
+  └─ profiles (N)              by userId, 实际每用户 1 条
+  └─ skill_assessments (N)
   └─ learning_tasks (N)
   └─ weekly_logs (N)
   └─ job_checklist_items (N)
   └─ ai_summaries (N)
-
-chat_sessions (1)
-  └─ chat_messages (N)         FK: session_id → chat_sessions.id (CASCADE)
+  └─ chat_sessions (N)
+       └─ chat_messages (N)    FK: session_id → chat_sessions.id (CASCADE)
 ```
 
-单用户场景下，所有数据都属于同一个用户，不做显式外键。chat_messages 除外，它显式关联 chat_sessions。
+所有业务表通过 `userId` 外键显式关联 `users`，`onDelete: Cascade`。`chat_messages` 不直接加 userId，靠 `session_id` 间接归属用户。
 
 ## Seed 数据
 
-首次启动时初始化：
+注册新用户时调用 `seedForUser(userId)` 初始化：
 
 1. 默认 job_checklist_items（简历/作品集/面试/薪资模板）
 2. 默认 learning_tasks 骨架（30/60/90 三阶段空任务）

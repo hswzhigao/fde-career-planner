@@ -37,3 +37,5 @@ prisma/migrations/
 Thumbs.db
 tsconfig.tsbuildinfo
 .env
+
+.worktrees/

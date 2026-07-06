@@ -1,11 +1,21 @@
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { authErrorResponse, requireUser } from "@/lib/auth";
 import { runStreamingAI } from "@/lib/ai/stream";
 import { SYSTEM_PROMPT, generateReportPrompt } from "@/lib/ai/prompts";
 import { SKILLS } from "@/lib/constants/skills";
+import { getLatestSummary } from "@/lib/ai/history";
 
-export async function POST() {
+export async function GET(req: NextRequest) {
+  return getLatestSummary(req, "full_report");
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const profile = await prisma.profile.findFirst();
+    const session = await requireUser(req);
+    const profile = await prisma.profile.findFirst({
+      where: { userId: session.userId },
+    });
     if (!profile) {
       return new Response(JSON.stringify({ error: "请先填写个人画像" }), {
         status: 400,
@@ -14,6 +24,7 @@ export async function POST() {
     }
 
     const records = await prisma.skillAssessment.findMany({
+      where: { userId: session.userId },
       orderBy: { assessed_at: "desc" },
     });
     const latest = new Map<string, number>();
@@ -27,10 +38,16 @@ export async function POST() {
       score: latest.get(s.key) ?? 0,
     }));
 
-    const allTasks = await prisma.learningTask.findMany();
+    const allTasks = await prisma.learningTask.findMany({
+      where: { userId: session.userId },
+    });
     const doneTasks = allTasks.filter((t) => t.status === "done").length;
-    const weeklyCount = await prisma.weeklyLog.count();
-    const allChecklist = await prisma.jobChecklistItem.findMany();
+    const weeklyCount = await prisma.weeklyLog.count({
+      where: { userId: session.userId },
+    });
+    const allChecklist = await prisma.jobChecklistItem.findMany({
+      where: { userId: session.userId },
+    });
     const doneChecklist = allChecklist.filter((c) => c.is_done).length;
 
     const userPrompt = generateReportPrompt({
@@ -48,7 +65,7 @@ export async function POST() {
       undefined,
       async (full) => {
         await prisma.aiSummary.create({
-          data: { type: "full_report", content: full },
+          data: { type: "full_report", content: full, userId: session.userId },
         });
       },
     );
@@ -61,10 +78,6 @@ export async function POST() {
       },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return authErrorResponse(e);
   }
 }

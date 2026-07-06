@@ -3,11 +3,27 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 17, 24, 39;
-  --background-rgb: 249, 250, 251;
+  --foreground-rgb: 28, 25, 23;
+  --background-rgb: 255, 247, 237;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
 }
+
+/* highlight.js — GitHub Dark theme for code blocks */
+.hljs { color: #e6edf3; background: transparent; }
+.hljs-comment, .hljs-quote { color: #8b949e; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-type { color: #ff7b72; }
+.hljs-string, .hljs-attr, .hljs-meta-string { color: #a5d6ff; }
+.hljs-number, .hljs-literal { color: #79c0ff; }
+.hljs-title, .hljs-section, .hljs-name { color: #d2a8ff; }
+.hljs-attribute, .hljs-variable, .hljs-template-variable { color: #ffa657; }
+.hljs-built_in, .hljs-builtin-name { color: #ffa657; }
+.hljs-symbol, .hljs-bullet, .hljs-link { color: #79c0ff; }
+.hljs-meta { color: #8b949e; }
+.hljs-deletion { color: #ffa198; background: #67060c; }
+.hljs-addition { color: #7ee787; background: #033a16; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: bold; }

@@ -1,28 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { authErrorResponse, requireUser } from "@/lib/auth";
 
-// 单用户场景：只取第一条
-export async function GET() {
-  const profile = await prisma.profile.findFirst();
-  if (!profile) {
-    await prisma.profile.create({ data: {} });
-    return NextResponse.json(await prisma.profile.findFirst());
+export async function GET(req: NextRequest) {
+  try {
+    const session = await requireUser(req);
+    let profile = await prisma.profile.findFirst({ where: { userId: session.userId } });
+    if (!profile) {
+      profile = await prisma.profile.create({ data: { userId: session.userId } });
+    }
+    return NextResponse.json(profile);
+  } catch (e) {
+    return authErrorResponse(e);
   }
-  return NextResponse.json(profile);
 }
 
 export async function PUT(req: NextRequest) {
-  const body = await req.json();
-  const existing = await prisma.profile.findFirst();
+  try {
+    const session = await requireUser(req);
+    const body = await req.json();
+    const { userId: _uid, id: _id, ...data } = body;
+    const existing = await prisma.profile.findFirst({ where: { userId: session.userId } });
 
-  if (!existing) {
-    const created = await prisma.profile.create({ data: body });
-    return NextResponse.json(created);
+    if (!existing) {
+      const created = await prisma.profile.create({ data: { ...data, userId: session.userId } });
+      return NextResponse.json(created);
+    }
+
+    const updated = await prisma.profile.update({
+      where: { id: existing.id },
+      data,
+    });
+    return NextResponse.json(updated);
+  } catch (e) {
+    return authErrorResponse(e);
   }
-
-  const updated = await prisma.profile.update({
-    where: { id: existing.id },
-    data: body,
-  });
-  return NextResponse.json(updated);
 }

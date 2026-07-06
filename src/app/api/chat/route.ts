@@ -1,25 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { authErrorResponse, requireUser } from "@/lib/auth";
 import { chatMultiTurn } from "@/lib/ai/client";
 import { SYSTEM_PROMPT } from "@/lib/ai/prompts";
 
 // GET: list all chat sessions
-export async function GET() {
-  const sessions = await prisma.chatSession.findMany({
-    orderBy: { updated_at: "desc" },
-    include: {
-      messages: {
-        orderBy: { created_at: "asc" },
-        take: 1, // just first message for preview
+export async function GET(req: NextRequest) {
+  try {
+    const session = await requireUser(req);
+    const sessions = await prisma.chatSession.findMany({
+      where: { userId: session.userId },
+      orderBy: { updated_at: "desc" },
+      include: {
+        messages: {
+          orderBy: { created_at: "asc" },
+          take: 1, // just first message for preview
+        },
       },
-    },
-  });
-  return NextResponse.json(sessions);
+    });
+    return NextResponse.json(sessions);
+  } catch (e) {
+    return authErrorResponse(e);
+  }
 }
 
 // POST: send a message and get streaming response
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireUser(req);
     const body = await req.json();
     const { sessionId, message } = body;
 
@@ -30,22 +38,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Get or create session
-    let session;
+    // Get or create session (scoped to the authenticated user)
+    let sessionRecord;
     if (sessionId) {
-      session = await prisma.chatSession.findUnique({
-        where: { id: sessionId },
+      sessionRecord = await prisma.chatSession.findFirst({
+        where: { id: sessionId, userId: session.userId },
         include: { messages: { orderBy: { created_at: "asc" } } },
       });
-      if (!session) {
+      if (!sessionRecord) {
         return new Response(JSON.stringify({ error: "会话不存在" }), {
           status: 404,
           headers: { "Content-Type": "application/json" },
         });
       }
     } else {
-      session = await prisma.chatSession.create({
-        data: { title: message.slice(0, 30) },
+      sessionRecord = await prisma.chatSession.create({
+        data: { title: message.slice(0, 30), userId: session.userId },
         include: { messages: true },
       });
     }
@@ -53,7 +61,7 @@ export async function POST(req: NextRequest) {
     // Save user message
     await prisma.chatMessage.create({
       data: {
-        session_id: session.id,
+        session_id: sessionRecord.id,
         role: "user",
         content: message,
       },
@@ -62,7 +70,7 @@ export async function POST(req: NextRequest) {
     // Build message history for multi-turn
     const messages = [
       { role: "system" as const, content: SYSTEM_PROMPT },
-      ...session.messages.map((m) => ({
+      ...sessionRecord.messages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       })),
@@ -83,22 +91,22 @@ export async function POST(req: NextRequest) {
           // Save assistant message
           await prisma.chatMessage.create({
             data: {
-              session_id: session.id,
+              session_id: sessionRecord.id,
               role: "assistant",
               content: full,
             },
           });
 
           // Update session title if first message
-          if (session.messages.length === 0) {
+          if (sessionRecord.messages.length === 0) {
             await prisma.chatSession.update({
-              where: { id: session.id },
+              where: { id: sessionRecord.id },
               data: { title: message.slice(0, 30) },
             });
           }
 
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "done", full, sessionId: session.id })}\n\n`),
+            encoder.encode(`data: ${JSON.stringify({ type: "done", full, sessionId: sessionRecord.id })}\n\n`),
           );
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Unknown error";
@@ -119,10 +127,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return authErrorResponse(e);
   }
 }

@@ -53,7 +53,7 @@ export default function JobChecklist() {
     load();
   };
 
-  if (loading) return <div className="text-gray-500">加载中…</div>;
+  if (loading) return <div className="text-stone-500">加载中…</div>;
 
   const totalDone = items.filter((i) => i.is_done).length;
   const overallProgress = items.length > 0 ? (totalDone / items.length) * 100 : 0;
@@ -61,13 +61,13 @@ export default function JobChecklist() {
   return (
     <div className="space-y-6">
       {/* Overall progress */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-900">整体完成率</h2>
-          <span className="text-sm text-gray-500">{totalDone}/{items.length}</span>
+          <h2 className="text-lg font-semibold text-stone-900">整体完成率</h2>
+          <span className="text-sm text-stone-500">{totalDone}/{items.length}</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-3">
-          <div className="bg-green-500 h-3 rounded-full transition-all" style={{ width: `${overallProgress}%` }} />
+        <div className="w-full bg-orange-100 rounded-full h-3">
+          <div className="bg-orange-500 h-3 rounded-full transition-all" style={{ width: `${overallProgress}%` }} />
         </div>
       </div>
 
@@ -77,10 +77,10 @@ export default function JobChecklist() {
         const doneCount = sectionItems.filter((i) => i.is_done).length;
 
         return (
-          <div key={section.key} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div key={section.key} className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">{section.label}</h2>
-              <span className="text-sm text-gray-500">{doneCount}/{sectionItems.length}</span>
+              <h2 className="text-lg font-semibold text-stone-900">{section.label}</h2>
+              <span className="text-sm text-stone-500">{doneCount}/{sectionItems.length}</span>
             </div>
             <div className="space-y-2">
               {sectionItems.map((item) => (
@@ -88,12 +88,12 @@ export default function JobChecklist() {
                   <button
                     onClick={() => toggle(item)}
                     className={`w-5 h-5 rounded border-2 flex items-center justify-center text-xs ${
-                      item.is_done ? "bg-green-500 border-green-500 text-white" : "border-gray-300 hover:border-brand-400"
+                      item.is_done ? "bg-green-500 border-green-500 text-white" : "border-gray-300 hover:border-orange-400"
                     }`}
                   >
                     {item.is_done ? "✓" : ""}
                   </button>
-                  <span className={`text-sm flex-1 ${item.is_done ? "line-through text-gray-400" : "text-gray-700"}`}>
+                  <span className={`text-sm flex-1 ${item.is_done ? "line-through text-stone-400" : "text-stone-700"}`}>
                     {item.title}
                   </span>
                   <button
@@ -119,11 +119,11 @@ export default function JobChecklist() {
                 onChange={(e) => setNewItem({ section: section.key, title: e.target.value })}
                 onKeyDown={(e) => e.key === "Enter" && add()}
                 placeholder={`添加${section.label}项…`}
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-xl text-sm"
               />
               <button
                 onClick={add}
-                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
+                className="px-3 py-1.5 bg-gray-100 text-stone-700 rounded-xl text-sm hover:bg-gray-200"
               >
                 添加
               </button>
