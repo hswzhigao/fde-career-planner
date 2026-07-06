@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAIStream } from "@/lib/hooks/useAIStream";
 import { MarkdownContent } from "@/components/ui/MarkdownContent";
 
@@ -27,19 +27,46 @@ export default function AIStreamPanel({
   onComplete,
   accentColor = "purple",
 }: AIStreamPanelProps) {
-  const { loading, content, error, done, run, reset } = useAIStream();
+  const { loading, content, error, done, run, reset, setContent } = useAIStream();
   const accent = ACCENTS[accentColor];
 
-  // Follow-up Q&A state
+  // History + UI state
+  const [historyDate, setHistoryDate] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [followups, setFollowups] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [followupInput, setFollowupInput] = useState("");
   const [followupLoading, setFollowupLoading] = useState(false);
   const [followupStreaming, setFollowupStreaming] = useState("");
 
+  // Load last AI summary on mount
+  useEffect(() => {
+    const query = body?.logId ? `?relatedId=${body.logId}` : "";
+    fetch(`${apiEndpoint}${query}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.content) {
+          setContent(data.content);
+          setHistoryDate(data.created_at);
+        }
+      })
+      .catch(() => {});
+  }, [apiEndpoint, body?.logId, setContent]);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  }, [content]);
+
   const handleClick = async () => {
     reset();
     setFollowups([]);
     setFollowupStreaming("");
+    setHistoryDate(null);
     await run(apiEndpoint, body);
     if (onComplete) {
       setTimeout(onComplete, 100);
@@ -126,7 +153,14 @@ export default function AIStreamPanel({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
+          {historyDate && !loading && (
+            <span className="text-xs text-stone-400">
+              上次生成于 {new Date(historyDate).toLocaleString("zh-CN")}
+            </span>
+          )}
+        </div>
         <button
           onClick={handleClick}
           disabled={loading}
@@ -138,7 +172,7 @@ export default function AIStreamPanel({
               AI 正在生成…
             </span>
           ) : (
-            buttonLabel
+            content ? "重新生成" : buttonLabel
           )}
         </button>
       </div>
@@ -150,9 +184,18 @@ export default function AIStreamPanel({
         </div>
       )}
 
-      {/* Streaming content */}
+      {/* Content with copy button */}
       {content && (
-        <div className={`p-4 rounded border ${accent.bg} ${accent.border}`}>
+        <div className={`p-4 rounded border ${accent.bg} ${accent.border} relative group`}>
+          {/* Copy button */}
+          {!loading && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 px-2.5 py-1 text-xs rounded-md bg-white/80 text-stone-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white border border-stone-200"
+            >
+              {copied ? "已复制 ✓" : "复制全部"}
+            </button>
+          )}
           <MarkdownContent content={content} />
           {loading && (
             <span className={`inline-block w-2 h-4 ml-0.5 animate-pulse ${accent.text}`}>▊</span>

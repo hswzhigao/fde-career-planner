@@ -1,9 +1,14 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authErrorResponse, requireUser } from "@/lib/auth";
 import { runStreamingAI } from "@/lib/ai/stream";
 import { SYSTEM_PROMPT, analyzeGapPrompt } from "@/lib/ai/prompts";
 import { SKILLS } from "@/lib/constants/skills";
+import { getLatestSummary } from "@/lib/ai/history";
+
+export async function GET(req: NextRequest) {
+  return getLatestSummary(req, "gap_analysis");
+}
 
 export async function POST(req: NextRequest) {
   try {

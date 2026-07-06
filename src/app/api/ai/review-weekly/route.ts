@@ -3,6 +3,11 @@ import { prisma } from "@/lib/db";
 import { authErrorResponse, requireUser } from "@/lib/auth";
 import { runStreamingAI } from "@/lib/ai/stream";
 import { SYSTEM_PROMPT, reviewWeeklyPrompt } from "@/lib/ai/prompts";
+import { getLatestSummary } from "@/lib/ai/history";
+
+export async function GET(req: NextRequest) {
+  return getLatestSummary(req, "weekly_review");
+}
 
 export async function POST(req: NextRequest) {
   try {

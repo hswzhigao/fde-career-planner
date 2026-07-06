@@ -108,5 +108,9 @@ export function useAIStream() {
     setState({ loading: false, content: "", error: null, done: false });
   }, []);
 
-  return { ...state, run, reset };
+  const setContent = useCallback((content: string) => {
+    setState({ loading: false, content, error: null, done: content.length > 0 });
+  }, []);
+
+  return { ...state, run, reset, setContent };
 }
