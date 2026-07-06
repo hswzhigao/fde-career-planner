@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { setSessionCookie, signSession } from "@/lib/auth";
 
+const DUMMY_PASSWORD_HASH = "$2b$10$2XrRmpXX/mUO.pOuY8rWy.ZVDDgdM1zAgWzBSjUrcTEeIihA35gTi";
+
 function normalizeEmail(email: unknown) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (!user) {
+    await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
     return invalidCredentialsResponse();
   }
 

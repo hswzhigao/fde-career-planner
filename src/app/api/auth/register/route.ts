@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { setSessionCookie, signSession } from "@/lib/auth";
-import { seedForUser } from "../../../../../prisma/seed";
+import { seedForUser } from "@/lib/seed-user";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -52,28 +53,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "邮箱已注册" }, { status: 409 });
   }
 
-  const userCount = await prisma.user.count();
   const passwordHash = await bcrypt.hash(password, 10);
   const avatarSeed = createHash("md5").update(email).digest("hex");
-  const role = userCount === 0 ? "admin" : "user";
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      nickname: nicknameInput || email.split("@")[0],
-      avatarSeed,
-      role,
-    },
-    select: {
-      id: true,
-      email: true,
-      nickname: true,
-      role: true,
-    },
-  });
+  let user;
+  try {
+    user = await prisma.$transaction(
+      async (tx) => {
+        // This reduces first-user role races, but the current schema has no unique
+        // constraint that can strictly enforce a single admin role across all writers.
+        const userCount = await tx.user.count();
+        const role = userCount === 0 ? "admin" : "user";
+        const createdUser = await tx.user.create({
+          data: {
+            email,
+            passwordHash,
+            nickname: nicknameInput || email.split("@")[0],
+            avatarSeed,
+            role,
+          },
+          select: {
+            id: true,
+            email: true,
+            nickname: true,
+            role: true,
+          },
+        });
 
-  await seedForUser(user.id);
+        await seedForUser(createdUser.id, tx);
+        return createdUser;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "邮箱已注册" }, { status: 409 });
+    }
+    throw error;
+  }
 
   const token = signSession({ userId: user.id, role: user.role as "user" | "admin" });
   const res = NextResponse.json(publicUser(user));
